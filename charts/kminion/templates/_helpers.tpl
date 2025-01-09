@@ -70,6 +70,15 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Annotation to trigger Deployment/DaemonSet restart when configmap changes
+*/}}
+{{- define "kminion.restartAnnotation" -}}
+{{- if .Values.configAutoReload }}
+checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum  | trunc 63 }}
+{{- end }}
+{{- end }}
+
+{{/*
 Create the name of the service account to use
 */}}
 {{- define "kminion.serviceAccountName" -}}
@@ -116,7 +125,7 @@ Return if ingress supports pathType.
 Return the appropriate apiVersion for podDisruptionBudget.
 */}}
 {{- define "kminion.podDisruptionBudget.apiVersion" -}}
-{{- if $.Capabilities.APIVersions.Has "policy/v1/PodDisruptionBudget" }}
+{{- if $.Capabilities.APIVersions.Has "policy/v1" }}
 {{- print "policy/v1" }}
 {{- else }}
 {{- print "policy/v1beta1" }}

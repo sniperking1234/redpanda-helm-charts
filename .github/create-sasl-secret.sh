@@ -13,7 +13,7 @@ kubectl create secret generic ${SECRET_NAME} \
 --from-file=.github/updated-sasl-users.txt \
 --dry-run=client -o yaml > ${SECRET_NAME}-updated.yaml.tmp
 
-# Updated sasl secrete starts with annotations for post-install hooks
+# Updated sasl secret starts with annotations for post-install hooks
 kubectl annotate -f ${SECRET_NAME}-updated.yaml.tmp \
 helm.sh/hook-delete-policy="before-hook-creation" \
 helm.sh/hook="post-install,post-upgrade" \

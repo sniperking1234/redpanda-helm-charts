@@ -14,11 +14,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */}}
+{{- define "curl-options" -}}
+{{- print " -svm3 --fail --retry \"120\" --retry-max-time \"120\" --retry-all-errors -o - -w \"\\nstatus=%{http_code} %{redirect_url} size=%{size_download} time=%{time_total} content-type=\\\"%{content_type}\\\"\\n\" "}}
+{{- end -}}
 {{- if .Values.test.create -}}
 apiVersion: v1
 kind: Pod
 metadata:
-  name: {{ include "connectors.fullname" . }}-mm2-test-{{ randNumeric 3 }}
+  name: {{ include "connectors.fullname" . }}-mm2-test
   namespace: {{ .Release.Namespace | quote }}
   labels:
 {{- with include "full.labels" . }}
@@ -39,15 +42,22 @@ spec:
         - /bin/bash
         - -c
         - |
-          set -x
+          set -xe
 
-          curl http://{{ include "connectors.serviceName" . }}:{{ .Values.connectors.restPort }}/connectors && echo
+          trap connectorsState ERR
 
-          rpk profile create test
-          rpk profile set tls.enabled={{.Values.connectors.brokerTLS.enabled}} brokers={{ .Values.connectors.bootstrapServers }}
-          {{- if .Values.connectors.brokerTLS.ca.secretRef }}
-          rpk profile set tls.ca={{ printf "/redpanda-certs/%s" (default "ca.crt" .Values.connectors.brokerTLS.ca.secretNameOverwrite) }}
-          {{- end }}
+          connectorsState () {
+            echo check connectors expand status
+            curl {{ template "curl-options" . }} http://{{ include "connectors.serviceName" . }}:{{ .Values.connectors.restPort }}/connectors?expand=status
+            echo check connectors expand info
+            curl {{ template "curl-options" . }} http://{{ include "connectors.serviceName" . }}:{{ .Values.connectors.restPort }}/connectors?expand=info
+            echo check connector configuration
+            curl {{ template "curl-options" . }} http://{{ include "connectors.serviceName" . }}:{{ .Values.connectors.restPort }}/connectors/$CONNECTOR_NAME
+            echo check connector topics
+            curl {{ template "curl-options" . }} http://{{ include "connectors.serviceName" . }}:{{ .Values.connectors.restPort }}/connectors/$CONNECTOR_NAME/topics
+          }
+
+          curl {{ template "curl-options" . }} http://{{ include "connectors.serviceName" . }}:{{ .Values.connectors.restPort }}/connectors
 
           SASL_MECHANISM="PLAIN"
           {{- if .Values.auth.sasl.enabled }}
@@ -67,6 +77,12 @@ spec:
           set +e
           {{- end }}
 
+          rpk profile create test
+          rpk profile set tls.enabled={{.Values.connectors.brokerTLS.enabled}} brokers={{ .Values.connectors.bootstrapServers }}
+          {{- if .Values.connectors.brokerTLS.ca.secretRef }}
+          rpk profile set tls.ca={{ printf "/redpanda-certs/%s" (default "ca.crt" .Values.connectors.brokerTLS.ca.secretNameOverwrite) }}
+          {{- end }}
+          
           {{- if .Values.connectors.brokerTLS.enabled }}
           CONNECT_TLS_ENABLED=true
           {{- else }}
@@ -128,50 +144,19 @@ spec:
           sed -i "s/JAAS_CONFIG_TARGET/$JAAS_CONFIG_TARGET/g" /tmp/mm2-conf.json
           set -x
 
-          max_iteration=10
-          for i in $(seq 1 $max_iteration)
-          do
-            curl -v -H 'Content-Type: application/json' http://{{ include "connectors.serviceName" . }}:{{ .Values.connectors.restPort }}/connectors -d @/tmp/mm2-conf.json && echo
-            result=$?
-            if [[ $result -eq 0 ]]
-            then
-              echo "Result successful"
-              break
-            else
-              echo "Result unsuccessful"
-              sleep 1
-            fi
-          done
+          curl {{ template "curl-options" . }} -H 'Content-Type: application/json' http://{{ include "connectors.serviceName" . }}:{{ .Values.connectors.restPort }}/connectors -d @/tmp/mm2-conf.json
 
-          if [[ $result -ne 0 ]]
-          then
-            echo "mm2 connector can not be created!!!"
-            exit 1
-          fi
+          # The rpk topic consume could fail for the first few times as kafka connect needs
+          # to spawn the task and copy one message from the source topic. To solve this race condition
+          # the retry should be implemented in bash for rpk topic consume or other mechanism that
+          # can confirm source connectors started its execution. As a fast fix fixed 30 second fix is added.
+          sleep 30
 
           rpk topic consume source.test-topic -n 1 | grep "Test message!"
 
-          for i in $(seq 1 $max_iteration)
-          do
-            curl -X DELETE http://{{ include "connectors.serviceName" . }}:{{ .Values.connectors.restPort }}/connectors/$CONNECTOR_NAME && echo
-            result=$?
-            if [[ $result -eq 0 ]]
-            then
-              echo "Result successful"
-              break
-            else
-              echo "Result unsuccessful"
-              sleep 1
-            fi
-          done
+          curl {{ template "curl-options" . }} -X DELETE http://{{ include "connectors.serviceName" . }}:{{ .Values.connectors.restPort }}/connectors/$CONNECTOR_NAME
 
-          if [[ $result -ne 0 ]]
-          then
-            echo "mm2 connector can not be destroyed!!!"
-            exit 1
-          fi
-
-          curl http://{{ include "connectors.serviceName" . }}:{{ .Values.connectors.restPort }}/connectors && echo
+          curl {{ template "curl-options" . }} http://{{ include "connectors.serviceName" . }}:{{ .Values.connectors.restPort }}/connectors
 
           rpk topic delete test-topic source.test-topic mm2-offset-syncs.test-only.internal
       volumeMounts:
