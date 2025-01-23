@@ -1,7 +1,9 @@
+{{- if .Values.tests.enabled }}
 apiVersion: v1
 kind: Pod
 metadata:
   name: "{{ include "console.fullname" . }}-test-connection"
+  namespace: {{ .Release.Namespace | quote }}
   labels:
     {{- include "console.labels" . | nindent 4 }}
   annotations:
@@ -16,4 +18,5 @@ spec:
       command: ['wget']
       args: ['{{ include "console.fullname" . }}:{{ .Values.service.port }}']
   restartPolicy: Never
-  priorityClassName: {{ .Values.priorityClassName }}
+  priorityClassName: {{ .Values.priorityClassName | quote }}
+{{- end }}

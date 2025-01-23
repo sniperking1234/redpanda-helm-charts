@@ -38,6 +38,8 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
+priorityClassName:
+
 podAnnotations: {}
 #  prometheus.io/scrape: "true"
 #  prometheus.io/port: "8080"
@@ -138,6 +140,8 @@ nodeSelector: {}
 
 tolerations: []
 
+hostAliases: []
+
 affinity: {}
 
 customLabels: {}
@@ -145,6 +149,7 @@ customLabels: {}
 serviceMonitor:
   create: false
   additionalLabels: {}
+  targetLabels: []
   honorLabels: false
   scrapeTimeout: 10s
   interval: 15s
@@ -289,3 +294,8 @@ kminion:
 #    logger:
 #      # Level is a logging priority. Higher levels are more important. Valid values are: debug, info, warn, error, fatal, panic
 #      level: info
+
+tests:
+  enabled: true
+
+configAutoReload: false

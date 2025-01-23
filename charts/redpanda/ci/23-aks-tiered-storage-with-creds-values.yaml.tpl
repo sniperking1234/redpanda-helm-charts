@@ -16,14 +16,18 @@
 storage:
   persistentVolume:
     storageClass: managed-csi
-  tieredConfig:
-    cloud_storage_enabled: true
-    cloud_storage_credentials_source: config_file
-    cloud_storage_segment_max_upload_interval_sec: 1
-    cloud_storage_azure_storage_account: ${TEST_STORAGE_ACCOUNT}
-    cloud_storage_azure_container: ${TEST_STORAGE_CONTAINER}
-    cloud_storage_azure_shared_key: ${TEST_AZURE_SHARED_KEY}
-license_key: "${REDPANDA_SAMPLE_LICENSE}"
+  tiered:
+    persistentVolume:
+      storageClass: managed-csi
+    config:
+      cloud_storage_enabled: true
+      cloud_storage_credentials_source: config_file
+      cloud_storage_segment_max_upload_interval_sec: 1
+      cloud_storage_azure_storage_account: ${TEST_STORAGE_ACCOUNT}
+      cloud_storage_azure_container: ${TEST_STORAGE_CONTAINER}
+      cloud_storage_azure_shared_key: ${TEST_AZURE_SHARED_KEY}
+enterprise:
+    license: "${REDPANDA_SAMPLE_LICENSE}"
 
 resources:
   cpu:
@@ -34,3 +38,11 @@ resources:
     redpanda:
       memory: 1Gi
       reserveMemory: 100Mi
+
+console:
+  # Until https://github.com/redpanda-data/console-enterprise/pull/256 is released the console
+  # test named `test-license-with-console.yaml` needs to work with unreleased Redpanda Console version.
+  image:
+    registry: redpandadata
+    repository: console-unstable
+    tag: master-8a51854

@@ -14,12 +14,22 @@
 # limitations under the License.
 ---
 storage:
-  tieredConfig:
-    cloud_storage_enabled: true
-    cloud_storage_credentials_source: config_file
-    cloud_storage_access_key: "${AWS_ACCESS_KEY_ID}"
-    cloud_storage_secret_key: "${AWS_SECRET_ACCESS_KEY}"
-    cloud_storage_region: "${AWS_REGION}"
-    cloud_storage_bucket: "${TEST_BUCKET}"
-    cloud_storage_segment_max_upload_interval_sec: 1
-license_key: "${REDPANDA_SAMPLE_LICENSE}"
+  tiered:
+    config:
+      cloud_storage_enabled: true
+      cloud_storage_credentials_source: config_file
+      cloud_storage_access_key: "${AWS_ACCESS_KEY_ID}"
+      cloud_storage_secret_key: "${AWS_SECRET_ACCESS_KEY}"
+      cloud_storage_region: "${AWS_REGION}"
+      cloud_storage_bucket: "${TEST_BUCKET}"
+      cloud_storage_segment_max_upload_interval_sec: 1
+enterprise:
+  license: "${REDPANDA_SAMPLE_LICENSE}"
+
+console:
+  # Until https://github.com/redpanda-data/console-enterprise/pull/256 is released the console
+  # test named `test-license-with-console.yaml` needs to work with unreleased Redpanda Console version.
+  image:
+    registry: redpandadata
+    repository: console-unstable
+    tag: master-8a51854
